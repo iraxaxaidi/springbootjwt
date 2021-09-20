@@ -6,16 +6,38 @@ import com.spring.security.jwt.repository.RoleRepo;
 import com.spring.security.jwt.repository.UserRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-@Service @RequiredArgsConstructor @Transactional @Slf4j
-public class UserServiceImplementation  implements UserService{
+@Service
+@RequiredArgsConstructor
+@Transactional
+@Slf4j
+public class UserServiceImplementation implements UserService, UserDetailsService {
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
 
+    @Override
+    public UserDetails loadUserByUsername(String userName) throws UsernameNotFoundException {
+        User user = userRepo.findByUserName(userName);
+        if (user == null) {
+            log.error("User not found in the database");
+            throw new UsernameNotFoundException("User not found in the database");
+        } else {
+            log.info("User found in the database {}", userName);
+        }
+        Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        user.getRoles().forEach(role -> authorities.add(new SimpleGrantedAuthority(role.getName())));
+        return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), authorities);
+    }
 
     @Override
     public User saveUser(User user) {
@@ -35,7 +57,7 @@ public class UserServiceImplementation  implements UserService{
         User user = userRepo.findByUserName(userName);
         Role role = roleRepo.findByName(roleName);
 
-        user.getRole().add(role);
+        user.getRoles().add(role);
     }
 
     @Override
